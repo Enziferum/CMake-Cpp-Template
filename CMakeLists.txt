@@ -20,8 +20,11 @@ include(cmake/Base.cmake)
 file(GLOB_RECURSE INCL include/*.hpp)
 file(GLOB_RECURSE SRC source/*.cpp)
 
+list(FILTER SRC EXCLUDE REGEX "source/.*main\\.cpp$")
+add_library(${PROJECT_NAME} ${SRC})
+add_executable(${PROJECT_NAME}-exe source/main.cpp)
+target_link_libraries(${PROJECT_NAME}-exe PRIVATE ${LIBS})
 
-add_executable(${PROJECT_NAME} ${SRC})
 target_include_directories(${PROJECT_NAME} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 
