@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
@@ -11,6 +11,7 @@ public:
         Optional
     };
 public:
+    Argument() = default;
     Argument(Type type);
     Argument(const Argument& other) = default;
     Argument& operator=(const Argument& other) = default;
@@ -44,10 +45,19 @@ public:
     SimpleArgumentParser& operator=(const SimpleArgumentParser& other) = delete;
     SimpleArgumentParser(SimpleArgumentParser&& other) = delete;
     SimpleArgumentParser& operator=(SimpleArgumentParser&& other) = delete;
-    ~SimpleArgumentParser();
+    ~SimpleArgumentParser() = default;
 
     Argument& add_argument(const std::string& name);
     Argument& add_argument(const std::string& shortArg, const std::string& longArg);
+
+
+    Argument& operator[](const std::string& name) {
+        return m_arguments[m_rawArguments.at(name)];
+    }
+
+    const Argument& operator[](const std::string& name) const {
+        return m_arguments.at(m_rawArguments.at(name));
+    }
 
     bool parse_args(int argc, char** argv);
 private:
@@ -57,10 +67,13 @@ private:
     using ArgumentID = std::uint32_t;
 
     ArgumentID m_current = 0;
+    std::string m_name;
 
     std::unordered_map<std::string, ArgumentID> m_rawArguments;
     std::unordered_map<ArgumentID, Argument> m_arguments;
 };
+
+SimpleArgumentParser::SimpleArgumentParser(const std::string& name): m_name{name} {}
 
 void SimpleArgumentParser::printHelp() {
 
@@ -95,6 +108,15 @@ bool SimpleArgumentParser::parse_args(int argc, char** argv) {
         return false;
     }
 
+    auto removeWhiteSpaces = [](std::string& str) {
+      	str.erase(std::remove_if(str.begin(), str.end(), isspace), str.end());
+    };
+
+    /// cat cat.c -n
+    /// cat -n cat.c
+    /// cat cat.c -n 10
+
+
     bool isProcessingOptionalArgument = false; // -v --verbose
     for(int i = 1; i < argc; ++i) {
         std::string current = argv[i];
@@ -108,17 +130,27 @@ bool SimpleArgumentParser::parse_args(int argc, char** argv) {
             else {
                 if(current[1] == '-') {
                     isProcessingOptionalArgument = true;
+                    removeWhiteSpaces(current);
+
                 }
                 else if(std::isdigit(current[1])) {
                     // negative value
+                    removeWhiteSpaces(current);
+                    int value = std::stoi(current);
+
                 }
                 else if(std::isalpha(current[1])) {
                     isProcessingOptionalArgument = true;
+                    removeWhiteSpaces(current);
+
                 }
                 else {
-                    /// cmd
+                    /// not
                 }
             }
+        }
+        else {
+
         }
 
     }
