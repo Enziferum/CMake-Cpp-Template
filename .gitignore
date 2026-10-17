@@ -1,4 +1,7 @@
 .idea/
-cmake-build-debug/
-cmake-build-release/
+cmake-build-*/
 build/
+work/
+CMakeUserPresets.json
+__pycache__/
+*.log

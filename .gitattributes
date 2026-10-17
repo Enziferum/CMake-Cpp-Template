@@ -1,8 +1,5 @@
 * text=auto eol=lf
 
-core/extlibs/**/* -text -eol linguist-vendored
-editor/extlibs/**/* -text -eol linguist-vendored
-
 *.png -text -eol
 *.jpg -text -eol
 *.wav -text -eol

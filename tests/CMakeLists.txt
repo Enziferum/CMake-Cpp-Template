@@ -1,25 +1,19 @@
-cmake_policy(SET CMP0135 NEW)
-
-include(FetchContent)
-FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-)
-
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-enable_testing()
-
-set(TESTS_PROJECT_NAME cmake-cpp-template)
-
-set(CMAKE_CXX_STANDARD 17)
-set(TESTS_NAME ${TESTS_PROJECT_NAME}-tests)
-set(SRC ${ECS_SRC} main.cpp)
-
-add_executable(${TESTS_NAME} ${SRC})
-target_link_libraries(${TESTS_NAME} PUBLIC GTest::gtest_main PRIVATE ${TESTS_PROJECT_NAME}-core)
+add_executable(${PROJECT_NAME}-tests LoggerTests.cpp VersionTests.cpp)
+target_link_libraries(${PROJECT_NAME}-tests PRIVATE
+    ${PROJECT_NAME}-core GTest::gtest_main)
+configure_project_warnings(${PROJECT_NAME}-tests)
 
 include(GoogleTest)
-gtest_discover_tests(${TESTS_NAME})
+gtest_discover_tests(${PROJECT_NAME}-tests DISCOVERY_MODE PRE_TEST)
+add_test(NAME app.version COMMAND $<TARGET_FILE:${PROJECT_NAME}-exe> --version)
+set_tests_properties(app.version PROPERTIES
+    PASS_REGULAR_EXPRESSION "${PROJECT_NAME} ${PROJECT_VERSION}")
+
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+    add_test(NAME generator
+        COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/scripts/test_generator.py")
+    add_test(NAME tooling
+        COMMAND "${Python3_EXECUTABLE}" -m unittest discover
+        -s "${PROJECT_SOURCE_DIR}/scripts" -p "test_*commit*.py" -v)
+endif()

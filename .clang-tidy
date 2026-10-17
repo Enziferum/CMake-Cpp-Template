@@ -1,0 +1,13 @@
+---
+Checks: >-
+  -*,
+  clang-analyzer-core.*,clang-analyzer-cplusplus.*,clang-analyzer-deadcode.*,
+  bugprone-dangling-handle,bugprone-inaccurate-erase,bugprone-infinite-loop,
+  bugprone-multiple-statement-macro,bugprone-move-forwarding-reference,
+  bugprone-sizeof-expression,bugprone-suspicious-semicolon,
+  bugprone-unused-raii,bugprone-use-after-move
+WarningsAsErrors: ''
+HeaderFilterRegex: '(^|[/\\])(include|source|tests)[/\\]'
+ExcludeHeaderFilterRegex: '(^|[/\\])(_deps|extlibs|ext|build|work)[/\\]'
+SystemHeaders: false
+FormatStyle: none

@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+configured_python=$(git config --get cppTemplate.hooks.python || true)
+if [ -n "$configured_python" ]; then
+    exec "$configured_python" scripts/pre_commit.py
+elif command -v python3 >/dev/null 2>&1; then
+    exec python3 scripts/pre_commit.py
+elif command -v python >/dev/null 2>&1; then
+    exec python scripts/pre_commit.py
+else
+    echo "pre-commit: Python 3.10+ is required." >&2
+    exit 1
+fi

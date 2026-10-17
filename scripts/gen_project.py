@@ -1,68 +1,66 @@
+"""Generate a standalone project without copying Git history or build output."""
+
 import argparse
+from pathlib import Path
+import re
 import shutil
-import os
-
-CopyFolders = ["cmake", "include", "source", "tests"]
-CopyFiles = ["CMakeLists.txt", ".gitattributes"]
-
-def copy_project_files(originPath, targetPath):
-    if not os.path.exists(targetPath):
-        os.mkdir(targetPath)
-
-    for copyFolder in CopyFolders:
-        originFolderPath = os.path.join(originPath, copyFolder)
-        targetFolderPath = os.path.join(targetPath, copyFolder)
-        print(f"Copy from: {originFolderPath} \n to: {targetFolderPath}")
-        try:
-            shutil.copytree(originFolderPath, targetFolderPath, dirs_exist_ok=True)
-        except:
-            pass
-    for copyFile in CopyFiles:
-        originFolderPath = os.path.join(originPath, copyFile)
-        targetFolderPath = os.path.join(targetPath, copyFile)
-        try:
-            shutil.copyfile(originFolderPath, targetFolderPath)
-        except:
-            pass
+import tempfile
 
 
-def process_main_cmakelists(path):
-    project_index = 2
+PROJECT_LINE = re.compile(
+    r"(?m)^project\([A-Za-z][A-Za-z0-9_]* VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)$"
+)
+DIRECTORIES = ("cmake", "include", "source", "tests", "scripts", ".githooks", "docs")
+FILES = ("CMakeLists.txt", "CMakePresets.json", ".gitignore", ".gitattributes", "README.md", "AGENTS.md",
+         ".clang-tidy", "uncrustify.cfg")
 
-    with open(path) as file:
-        idx = 1
-        for line in file:
-            line = line.rstrip()
-            if idx == project_index:
-                pass
-                
 
-def process_tests_cmakelists(path):
-    with open(path) as file:
-        for line in file:
-            line = line.rstrip()
+def generate(name: str, parent: Path, template: Path) -> Path:
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name):
+        raise ValueError("Name must start with a letter and contain only ASCII letters, digits or underscores")
+    parent = parent.resolve()
+    template = template.resolve()
+    if not parent.is_dir():
+        raise ValueError(f"Parent directory does not exist: {parent}")
+    target = parent / name
+    if target.exists():
+        raise FileExistsError(f"Destination already exists: {target}")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--name', required=True)
-    parser.add_argument('--path', required=True)
+    # Stage beside the destination; publish only a complete generated project.
+    with tempfile.TemporaryDirectory(prefix=".cpp-template-", dir=parent) as temporary:
+        staging = Path(temporary) / name
+        staging.mkdir()
+        for directory in DIRECTORIES:
+            shutil.copytree(
+                template / directory, staging / directory,
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
+        for filename in FILES:
+            shutil.copyfile(template / filename, staging / filename)
+        cmake_file = staging / "CMakeLists.txt"
+        content, replacements = PROJECT_LINE.subn(
+            lambda match: f"project({name} VERSION {match.group(1)} LANGUAGES CXX)",
+            cmake_file.read_text(encoding="utf-8"),
+        )
+        if replacements != 1:
+            raise ValueError("Expected one project(NAME VERSION x.y.z LANGUAGES CXX) declaration")
+        cmake_file.write_text(content, encoding="utf-8", newline="\n")
+        staging.rename(target)
+    return target
 
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--name", required=True)
+    parser.add_argument("--path", required=True, type=Path, help="Existing parent directory")
     args = parser.parse_args()
+    try:
+        target = generate(args.name, args.path, Path(__file__).resolve().parents[1])
+    except (OSError, ValueError) as error:
+        parser.exit(1, f"Generation failed: {error}\n")
+    print(f"Created: {target}")
+    return 0
 
-    targetPath = os.path.join(args.path, args.name)
-    print(f"Output path: {targetPath}")
-    head, tail = os.path.split(os.path.dirname(os.path.realpath(__file__)))
-    originPath = head
 
-    copy_project_files(originPath, targetPath)
-
-    incl_folder_path = os.path.join(targetPath, "include/folder")
-    target_incl_folder_path = os.path.join(targetPath, f"include/{args.name}")
-    shutil.move(incl_folder_path, target_incl_folder_path)
-
-    mainCmakeFile = os.path.join(targetPath, "CMakeLists.txt")
-    testsCmakeFile = os.path.join(targetPath, "tests/CMakeLists.txt")
-
-    # process_main_cmakelists(mainCmakeFile)
-    # process_tests_cmakelists(testsCmakeFile)
-
+if __name__ == "__main__":
+    raise SystemExit(main())
